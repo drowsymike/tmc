@@ -1,3 +1,6 @@
+#Stuff of Visusl Studio Code
+*.json
+
 # Prerequisites
 *.d
 
@@ -41,6 +44,7 @@
 *.su
 *.idb
 *.pdb
+*.bin
 
 # Kernel Module Compile Results
 *.mod*
