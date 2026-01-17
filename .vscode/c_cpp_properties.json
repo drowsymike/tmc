@@ -1,0 +1,23 @@
+{
+    "configurations": [
+        {
+            "name": "STM32F4",
+            "includePath": [
+                "${workspaceFolder}/config",
+                "${workspaceFolder}/app/inc",
+                "${workspaceFolder}/platform/hal/Inc",
+                "${workspaceFolder}/platform/cmsis/CMSIS/Include",
+                "${workspaceFolder}/platform/cmsis/CMSIS/Device/ST/STM32F4xx/Include",
+                "${workspaceFolder}/**"
+            ],
+            "defines": [
+                "USE_HAL_DRIVER",
+                "STM32F401xE"
+            ],
+            "compilerPath": "/home/mike/bin/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/arm-none-eabi-gcc",
+            "intelliSenseMode": "linux-gcc-arm",
+            "cStandard": "c11"
+        }
+    ],
+    "version": 4
+}
