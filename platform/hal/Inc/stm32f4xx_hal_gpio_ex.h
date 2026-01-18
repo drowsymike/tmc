@@ -1442,7 +1442,7 @@
 
 /*---------------------------------------- STM32F401xx------------------------*/
 #if defined(STM32F401xC) || defined(STM32F401xE)
-#define IS_GPIO_AF(AF)   (((AF) == GPIO_AF0_RTC_50Hz)   || ((AF) == GPIO_AF12_SDIO)      || \
+/*#define IS_GPIO_AF(AF)   (((AF) == GPIO_AF0_RTC_50Hz)   || ((AF) == GPIO_AF12_SDIO)      || \
                           ((AF) == GPIO_AF0_MCO)        || ((AF) == GPIO_AF0_TAMPER)     || \
                           ((AF) == GPIO_AF0_SWJ)        || ((AF) == GPIO_AF0_TRACE)      || \
                           ((AF) == GPIO_AF1_TIM1)       || ((AF) == GPIO_AF1_TIM2)       || \
@@ -1455,7 +1455,7 @@
                           ((AF) == GPIO_AF6_SPI3)       || ((AF) == GPIO_AF7_USART1)     || \
                           ((AF) == GPIO_AF7_USART2)     || ((AF) == GPIO_AF8_USART6)     || \
                           ((AF) == GPIO_AF9_I2C2)       || ((AF) == GPIO_AF9_I2C3)       || \
-                          ((AF) == GPIO_AF10_OTG_FS)    || ((AF) == GPIO_AF15_EVENTOUT))
+                          ((AF) == GPIO_AF10_OTG_FS)    || ((AF) == GPIO_AF15_EVENTOUT))*/
 #endif /* STM32F401xC || STM32F401xE */
 /*----------------------------------------------------------------------------*/
 /*---------------------------------------- STM32F410xx------------------------*/
