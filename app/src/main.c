@@ -37,7 +37,9 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   i2c_init();
-  
+  pwm_timer_init();
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
+
   HAL_UART_Receive_IT(&huart2, &rx_byte, 1);
 
   while (1)
@@ -87,9 +89,9 @@ void pwm_timer_init(void) {
   TIM_MasterConfigTypeDef sMasterConfig = {0};
   TIM_OC_InitTypeDef sConfigOC = {0};
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 0;
+  htim3.Init.Prescaler = 8399;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 65535;
+  htim3.Init.Period = 999;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   HAL_TIM_Base_Init(&htim3);
@@ -100,12 +102,11 @@ void pwm_timer_init(void) {
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig);
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 0;
+  sConfigOC.Pulse = 500;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_3);
   HAL_TIM_MspPostInit(&htim3);
-  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
 }
 
 void MX_USART2_UART_Init(void)
@@ -141,36 +142,13 @@ void i2c_init(void)
 
 void MX_GPIO_Init(void)
 {
-  //PC7 - base/gate
-  //PB6 - collector
-  //PA7 - emitter
-  __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOH_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
 
-  GPIO_InitTypeDef gpio = {0};
-  gpio.Pin = GPIO_PIN_7;
-  gpio.Mode = GPIO_MODE_OUTPUT_PP;
-  gpio.Pull = GPIO_NOPULL;
-  gpio.Speed = GPIO_SPEED_FREQ_HIGH;
-  HAL_GPIO_Init(GPIOC, &gpio);
-  HAL_GPIO_Init(GPIOA, &gpio);
-  /* --- */
-  gpio.Pin = GPIO_PIN_6;
-  gpio.Mode = GPIO_MODE_OUTPUT_PP;
-  gpio.Pull = GPIO_NOPULL;
-  gpio.Speed = GPIO_SPEED_FREQ_HIGH;
-  HAL_GPIO_Init(GPIOB, &gpio);
 }
 
 int set_pwm(uint8_t filling) {
-  if (filling > 100) {
-    return 1;
-  }
-  //this is PROCENTS of the max temperature
-  uint8_t resultivity_frequency = 65535 * (filling / 100);
-  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, resultivity_frequency);
+  if (filling > 100) return 1;
+  uint32_t compare_value = (999 * (uint32_t)filling) / 100; 
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, compare_value);
   return 0;
 }
 

@@ -42,6 +42,8 @@ platform/hal/Src/stm32f4xx_hal_cortex.c \
 platform/hal/Src/stm32f4xx_hal_uart.c \
 platform/hal/Src/stm32f4xx_hal_dma.c \
 platform/hal/Src/stm32f4xx_hal_i2c.c \
+platform/hal/Src/stm32f4xx_hal_tim.c \
+platform/hal/Src/stm32f4xx_hal_tim_ex.c \
 app/src/stm32f4xx_hal_msp.c \
 app/src/stm32f4xx_it.c \
 app/src/syscalls.c \
