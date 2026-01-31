@@ -15,6 +15,8 @@ OPT = -Og
 CFLAGS  = $(MCU) $(OPT) -Wall -fdata-sections -ffunction-sections
 CFLAGS += -DUSE_HAL_DRIVER
 CFLAGS += -Iapp/inc
+CFLAGS += -Iapp/lib/inc
+CFLAGS += -Iapp/lib/src/bmp180
 CFLAGS += -Iconfig
 CFLAGS += -Iplatform/hal/Inc
 CFLAGS += -Iplatform/cmsis/CMSIS/Include
@@ -27,10 +29,12 @@ LDFLAGS = -T platform/linker/$(LDSCRIPT) \
           -nostartfiles \
           --specs=nosys.specs \
           --specs=nano.specs \
-          -Wl,--gc-sections
+          -Wl,--gc-sections \
+		  -u _printf_float
 
 SRC = \
 app/src/main.c \
+app/lib/src/bmp180/sensor.c \
 config/clock.c \
 platform/startup/$(STARTUP) \
 platform/cmsis/CMSIS/Device/ST/STM32F4xx/Source/Templates/system_stm32f4xx.c \

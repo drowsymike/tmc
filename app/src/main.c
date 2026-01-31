@@ -2,6 +2,7 @@
 #include "main.h"
 #include <stdio.h>
 #include <string.h>
+#include "bmp180.h"
 
 UART_HandleTypeDef huart2;
 I2C_HandleTypeDef i2c;
@@ -13,6 +14,8 @@ bool turn_off_cmd_flag = false;
 bool info_cmd_flag = false;
 bool data_incoming = false;
 uint16_t target_temperature = 0;
+
+uint8_t msg[16] = {0};
 
 extern uint8_t rx_byte;
 extern uint8_t rx_buffer[64];
@@ -38,6 +41,19 @@ int main(void)
   MX_USART2_UART_Init();
   i2c_init();
   pwm_timer_init();
+  bmp180_struct_init();
+  bmp180_init();
+  bmp180_get_global_coefficients();
+  float res = bmp180_get_temp();
+  if (res == 0.0) {
+    HAL_UART_Transmit(&huart2, (uint8_t*)"zero\n", 10, 10);
+  } else {
+    snprintf((char*)msg, sizeof(msg), "%f", res);
+    HAL_UART_Transmit(&huart2, (uint8_t*)msg, sizeof(msg), 100);
+  }
+  /*HAL_UART_Transmit(&huart2, (uint8_t*)"\r\n", 2, 10);
+  HAL_UART_Transmit(&huart2, (uint8_t*)"\r\n", 2, 10);*/
+  //HAL_UART_Transmit(&huart2, (uint8_t*)msg, sizeof(msg), 100);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
 
   HAL_UART_Receive_IT(&huart2, &rx_byte, 1);
