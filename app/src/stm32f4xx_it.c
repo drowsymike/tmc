@@ -8,6 +8,8 @@ uint8_t rx_byte = 0;
 uint8_t rx_buffer[64] = {0};
 uint8_t rx_buffer_index = 0;
 volatile uint8_t command_ready = 0;
+uint16_t counter = 0;
+extern bool temperature_check_flag;
 
 void NMI_Handler(void)
 {
@@ -62,6 +64,11 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
   HAL_IncTick();
+  if (counter == 100) {
+    temperature_check_flag = true;
+    counter = 0;
+  }
+  counter++;
 }
 
 void USART2_IRQHandler(void) { // Исправил на 2

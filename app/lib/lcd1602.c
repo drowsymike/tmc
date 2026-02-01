@@ -1,8 +1,11 @@
 #include <main.h>
 #include "lcd1602.h"
+#include <string.h>
 
 extern UART_HandleTypeDef huart2;
 extern I2C_HandleTypeDef i2c;
+
+uint16_t lcd1604_addr = 0x27 << (uint16_t)1;
 
 void lcd1602_init(void) {	
   HAL_Delay(50);

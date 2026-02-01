@@ -6,8 +6,6 @@
 #define BACKLIGHT (1 << 3)
 #define OSS 0
 
-uint16_t lcd1604_addr = 0x27 << (uint16_t)1;
-
 /*
  * @brief function for init 1602 lcd
  *        display

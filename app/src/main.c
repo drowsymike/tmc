@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "bmp180.h"
+#include "lcd1602.h"
 
 UART_HandleTypeDef huart2;
 I2C_HandleTypeDef i2c;
@@ -24,6 +25,8 @@ extern uint8_t command_ready;
 
 TIM_HandleTypeDef htim3;
 
+bool temperature_check_flag = false;
+
 /*--Function headers for STM32-------------------------------------------------*/
 
 void SystemClock_Config(void);
@@ -44,46 +47,34 @@ int main(void)
   bmp180_struct_init();
   bmp180_init();
   bmp180_get_global_coefficients();
-  float res = bmp180_get_temp();
-  if (res == 0.0) {
-    HAL_UART_Transmit(&huart2, (uint8_t*)"zero\n", 10, 10);
-  } else {
-    snprintf((char*)msg, sizeof(msg), "%f", res);
-    HAL_UART_Transmit(&huart2, (uint8_t*)msg, sizeof(msg), 100);
-  }
-  /*HAL_UART_Transmit(&huart2, (uint8_t*)"\r\n", 2, 10);
-  HAL_UART_Transmit(&huart2, (uint8_t*)"\r\n", 2, 10);*/
-  //HAL_UART_Transmit(&huart2, (uint8_t*)msg, sizeof(msg), 100);
+  float res = 0.0;
+  lcd1602_init();
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
 
   HAL_UART_Receive_IT(&huart2, &rx_byte, 1);
 
   while (1)
   {
+    if (temperature_check_flag == true) {
+      temperature_check_flag = false;
+      res = bmp180_get_temp();
+      snprintf((char*)msg, sizeof(msg), "%f", res);
+      lcd1602_transmit_command(0b10000000);
+      lcd1602_send_string((char*)msg);
+    }
+    
     if (command_ready == 1) {
-      /*HAL_UART_Transmit(&huart2, rx_buffer, strlen((char*)rx_buffer), 100);
-      HAL_UART_Transmit(&huart2, (uint8_t*)"\r\n", 2, 10);*/
-
       memcpy(cmd_tmp, rx_buffer, 3);
       cmd_tmp[3] = '\0';
-      
-      /*HAL_UART_Transmit(&huart2, cmd_tmp, strlen((char*)cmd_tmp), 100);
-      HAL_UART_Transmit(&huart2, (uint8_t*)"\r\n", 2, 10);*/
-
       if (strcmp((const char *)cmd_tmp, (const char *)set_temperature_cmd) == 0) {
-        //HAL_UART_Transmit(&huart2, (const uint8_t *)"temperature changing\n", strlen((char*)"temperature changing\n"), 10);
         int parsed_count = sscanf((char*)rx_buffer, "set %hu", &target_temperature);
         if (parsed_count == 1) {
-          //HAL_UART_Transmit(&huart2, (const uint8_t *)"setting is done\n", strlen((char*)"setting is done\n"), 10);
-          //setting, actually
           set_pwm(target_temperature);
         } else {
           HAL_UART_Transmit(&huart2, (const uint8_t *)"Unknown command\n", strlen((char*)"Unknown command\n"), 10);
         }
-        //calling the function of changing the PWM filling
       } else if (strcmp((const char *)cmd_tmp, (const char *)turn_off_cmd) == 0) {
         HAL_UART_Transmit(&huart2, (const uint8_t *)"shutting down...\n", strlen((char*)"shutting down...\n"), 10);
-        //calling the function of disabling the PWM
       } else {
         HAL_UART_Transmit(&huart2, (const uint8_t *)"Unknown command\n", strlen((char*)"Unknown command\n"), 10);
       }
