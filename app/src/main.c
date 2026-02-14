@@ -5,6 +5,10 @@
 #include "bmp180.h"
 #include "lcd1602.h"
 
+#define coil_prescaler 15999
+#define coil_max_period 9999
+#define coil_max_pulse 0
+
 UART_HandleTypeDef huart2;
 I2C_HandleTypeDef i2c;
 
@@ -40,22 +44,20 @@ int main(void)
 {
   HAL_Init();
   SystemClock_Config();
-  MX_GPIO_Init();
+  //MX_GPIO_Init();
   MX_USART2_UART_Init();
   i2c_init();
   pwm_timer_init();
-  bmp180_struct_init();
-  bmp180_init();
-  bmp180_get_global_coefficients();
-  float res = 0.0;
-  lcd1602_init();
+  //bmp180_struct_init();
+  //bmp180_init();
+  //bmp180_get_global_coefficients();
+  //float res = 0.0;
+  //lcd1602_init();
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
-
-  HAL_UART_Receive_IT(&huart2, &rx_byte, 1);
-
+  set_pwm(50);
   while (1)
   {
-    if (temperature_check_flag == true) {
+    /*if (temperature_check_flag == true) {
       temperature_check_flag = false;
       res = bmp180_get_temp();
       snprintf((char*)msg, sizeof(msg), "%f", res);
@@ -82,7 +84,7 @@ int main(void)
       rx_buffer_index = 0;
       memset(rx_buffer, 0, 64);
       command_ready = 0;
-    }
+    }*/
   }
 }
 
@@ -92,28 +94,31 @@ int main(void)
  * 
  */
 void pwm_timer_init(void) {
-  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_OC_InitTypeDef sConfigOC = {0};
+  __HAL_RCC_TIM3_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  GPIO_InitStruct.Pin = GPIO_PIN_0;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF2_TIM3;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 8399;
+  htim3.Init.Prescaler = coil_prescaler; 
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 999;
+  htim3.Init.Period = coil_max_period; 
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  HAL_TIM_Base_Init(&htim3);
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig);
   HAL_TIM_PWM_Init(&htim3);
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig);
+
+  TIM_OC_InitTypeDef sConfigOC = {0};
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 500;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.Pulse = coil_max_pulse;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_LOW;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_3);
-  HAL_TIM_MspPostInit(&htim3);
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
 }
 
 void MX_USART2_UART_Init(void)
@@ -149,12 +154,17 @@ void i2c_init(void)
 
 void MX_GPIO_Init(void)
 {
-
+  
 }
 
 int set_pwm(uint8_t filling) {
-  if (filling > 100) return 1;
-  uint32_t compare_value = (999 * (uint32_t)filling) / 100; 
+  //period is 100%
+  if (filling > 100) {
+    return 1;
+  }
+  //uint32_t compare_value = 100 - (filling * ((float)coil_max_period * 0.01)); 
+  uint32_t compare_value = (100 - filling) * ((float)coil_max_period * 0.01);
+  if (compare_value > coil_max_period) compare_value = coil_max_period;
   __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, compare_value);
   return 0;
 }
