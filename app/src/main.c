@@ -27,9 +27,40 @@ extern uint8_t rx_buffer[64];
 extern uint8_t rx_buffer_index;
 extern uint8_t command_ready;
 
+float Kp = 2.0;
+float Ki = 0.5;
+float Kd = 1.0;
+float integral = 0;
+float prev_error = 0;
+
 TIM_HandleTypeDef htim3;
 
 bool temperature_check_flag = false;
+
+float compute_pid(float target, float current) {
+  float error = target - current;
+  
+  // P
+  float P_out = Kp * error;
+  
+  // I (с защитой от переполнения)
+  integral += error;
+  if (integral > 50) integral = 50;   // Чуть уменьшим лимиты для стабильности
+  if (integral < -50) integral = -50; 
+  float I_out = Ki * integral;
+  
+  // D
+  float D_out = Kd * (error - prev_error);
+  prev_error = error;
+  
+  float output = P_out + I_out + D_out;
+  
+  // Ограничиваем мощность 0-100%
+  if (output > 100) output = 100;
+  if (output < 0) output = 0;
+  
+  return output;
+}
 
 /*--Function headers for STM32-------------------------------------------------*/
 
@@ -44,23 +75,28 @@ int main(void)
 {
   HAL_Init();
   SystemClock_Config();
-  //MX_GPIO_Init();
   MX_USART2_UART_Init();
   i2c_init();
   pwm_timer_init();
-  //bmp180_struct_init();
-  //bmp180_init();
-  //bmp180_get_global_coefficients();
-  //float res = 0.0;
-  //lcd1602_init();
+  HAL_UART_Receive_IT(&huart2, &rx_byte, 1);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
-  set_pwm(50);
+  set_pwm(80);
+  float current_temp = 0;
+
   while (1)
   {
-    /*if (temperature_check_flag == true) {
+    if (temperature_check_flag == true) {
       temperature_check_flag = false;
-      res = bmp180_get_temp();
-      snprintf((char*)msg, sizeof(msg), "%f", res);
+      
+      current_temp = bmp180_get_temp();
+      
+      float power = compute_pid((float)target_temperature, current_temp);
+      
+      // ПРИМЕНЯЕМ ПИД к железу
+      set_pwm((uint8_t)power);
+      
+      // Вывод на дисплей для контроля
+      snprintf((char*)msg, sizeof(msg), "T:%2.1f P:%d%%", current_temp, (int)power);
       lcd1602_transmit_command(0b10000000);
       lcd1602_send_string((char*)msg);
     }
@@ -84,7 +120,7 @@ int main(void)
       rx_buffer_index = 0;
       memset(rx_buffer, 0, 64);
       command_ready = 0;
-    }*/
+    }
   }
 }
 

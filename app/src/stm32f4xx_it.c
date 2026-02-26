@@ -71,24 +71,30 @@ void SysTick_Handler(void)
   counter++;
 }
 
-void USART2_IRQHandler(void) { // Исправил на 2
+void USART2_IRQHandler(void) {
   HAL_UART_IRQHandler(&huart2);
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-  if(huart->Instance == USART2)
+  if (huart->Instance == USART2) 
   {
-    if (rx_buffer_index < 64 - 1) {
-      if (rx_byte == '\n' || rx_byte == '\r') {
-        rx_buffer[rx_buffer_index] = '\0';
-        command_ready = 1;
-      } else {
-        rx_buffer[rx_buffer_index++] = rx_byte;
-      }
-    } else {
+    if (rx_byte == '\n' || rx_byte == '\r') 
+    {
+      rx_buffer[rx_buffer_index] = '\0';
+      command_ready = true;
       rx_buffer_index = 0;
+    }
+    else if (rx_buffer_index < 63) 
+    {
+      rx_buffer[rx_buffer_index++] = rx_byte;
     }
     HAL_UART_Receive_IT(&huart2, &rx_byte, 1);
   }
 }
+
+/*
+  callback
+  receiving the message
+
+*/
