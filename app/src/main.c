@@ -12,6 +12,23 @@
 UART_HandleTypeDef huart2;
 I2C_HandleTypeDef i2c;
 
+typedef enum {
+  MODE_MANUAL,
+  MODE_PROFILE,
+  MODE_OFF
+} WorkMode;
+
+typedef struct {
+  uint16_t temp;
+  uint16_t duration;
+} Step_t;
+
+Step_t thermo_profile[] = { {40, 30}, {60, 60}, {0, 0} }; 
+
+WorkMode current_mode;
+int8_t current_step;
+uint32_t step_timer;
+
 uint8_t cmd_tmp[4] = {0};
 
 bool set_temperature_cmd_flag = false;
@@ -28,7 +45,7 @@ extern uint8_t rx_buffer_index;
 extern uint8_t command_ready;
 
 float Kp = 2.0;
-float Ki = 0.5;
+float Ki = 0.05;
 float Kd = 1.0;
 float integral = 0;
 float prev_error = 0;
@@ -39,23 +56,14 @@ bool temperature_check_flag = false;
 
 float compute_pid(float target, float current) {
   float error = target - current;
-  
-  // P
   float P_out = Kp * error;
-  
-  // I (с защитой от переполнения)
   integral += error;
-  if (integral > 50) integral = 50;   // Чуть уменьшим лимиты для стабильности
+  if (integral > 50) integral = 50;
   if (integral < -50) integral = -50; 
   float I_out = Ki * integral;
-  
-  // D
   float D_out = Kd * (error - prev_error);
   prev_error = error;
-  
   float output = P_out + I_out + D_out;
-  
-  // Ограничиваем мощность 0-100%
   if (output > 100) output = 100;
   if (output < 0) output = 0;
   
@@ -77,46 +85,67 @@ int main(void)
   SystemClock_Config();
   MX_USART2_UART_Init();
   i2c_init();
+  lcd1602_init();
   pwm_timer_init();
   HAL_UART_Receive_IT(&huart2, &rx_byte, 1);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
-  set_pwm(80);
+  set_pwm(0);
+  current_mode = MODE_PROFILE;
+  current_step = 0;
+  step_timer = 0;
+
   float current_temp = 0;
 
   while (1)
   {
     if (temperature_check_flag == true) {
       temperature_check_flag = false;
-      
       current_temp = bmp180_get_temp();
       
+      if (current_mode == MODE_PROFILE) 
+      {
+        target_temperature = thermo_profile[current_step].temp;
+        step_timer++;
+        
+        if (step_timer >= thermo_profile[current_step].duration) 
+        {
+          current_step++;
+          step_timer = 0;
+          integral = 0; 
+          prev_error = 0;
+          if (thermo_profile[current_step].temp == 0) 
+          {
+            target_temperature = 0;
+            current_mode = MODE_OFF;
+          }
+        }
+      }
+
       float power = compute_pid((float)target_temperature, current_temp);
-      
-      // ПРИМЕНЯЕМ ПИД к железу
       set_pwm((uint8_t)power);
       
-      // Вывод на дисплей для контроля
-      snprintf((char*)msg, sizeof(msg), "T:%2.1f P:%d%%", current_temp, (int)power);
-      lcd1602_transmit_command(0b10000000);
-      lcd1602_send_string((char*)msg);
+      char row1[17], row2[17];
+      snprintf(row1, 16, "Real:%2.1f C  ", current_temp);
+      snprintf(row2, 16, "Set :%d C %s", target_temperature, (current_mode == MODE_PROFILE ? "AUTO" : "MAN "));
+      
+      lcd1602_transmit_command(0b10000000); 
+      lcd1602_send_string(row1);
+      lcd1602_transmit_command(0b11000000); 
+      lcd1602_send_string(row2);
     }
     
     if (command_ready == 1) {
       memcpy(cmd_tmp, rx_buffer, 3);
       cmd_tmp[3] = '\0';
-      if (strcmp((const char *)cmd_tmp, (const char *)set_temperature_cmd) == 0) {
+      
+      if (strcmp((const char *)cmd_tmp, "set") == 0) {
         int parsed_count = sscanf((char*)rx_buffer, "set %hu", &target_temperature);
         if (parsed_count == 1) {
-          set_pwm(target_temperature);
+          current_mode = MODE_MANUAL;
         } else {
-          HAL_UART_Transmit(&huart2, (const uint8_t *)"Unknown command\n", strlen((char*)"Unknown command\n"), 10);
+          HAL_UART_Transmit(&huart2, (uint8_t *)"parsing error\n", 14, 100);
         }
-      } else if (strcmp((const char *)cmd_tmp, (const char *)turn_off_cmd) == 0) {
-        HAL_UART_Transmit(&huart2, (const uint8_t *)"shutting down...\n", strlen((char*)"shutting down...\n"), 10);
-      } else {
-        HAL_UART_Transmit(&huart2, (const uint8_t *)"Unknown command\n", strlen((char*)"Unknown command\n"), 10);
       }
-
       rx_buffer_index = 0;
       memset(rx_buffer, 0, 64);
       command_ready = 0;

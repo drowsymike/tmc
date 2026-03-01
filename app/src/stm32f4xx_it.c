@@ -64,11 +64,12 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
   HAL_IncTick();
-  if (counter == 100) {
+  if (counter == 1000) {
     temperature_check_flag = true;
     counter = 0;
+  } else {
+    counter++;
   }
-  counter++;
 }
 
 void USART2_IRQHandler(void) {

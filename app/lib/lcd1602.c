@@ -22,6 +22,7 @@ void lcd1602_init(void) {
   lcd1602_transmit_command(0x06);
   HAL_Delay(1);
   lcd1602_transmit_command(0x0C);
+  HAL_Delay(1);
 }
 
 void lcd1602_send_string(char *str) {
@@ -36,18 +37,19 @@ void lcd1602_send_string(char *str) {
 }
 
 HAL_StatusTypeDef lcd1602_transmit(uint8_t data, uint8_t flags) {
-	uint8_t upper_bits = data & 0xF0;
-	uint8_t lower_bits = (data << 4) & 0xF0;
-	uint8_t data_arr[4];                              
-	data_arr[0] = upper_bits | flags | BACKLIGHT | PIN_EN; 
-	data_arr[1] = upper_bits | flags | BACKLIGHT;         
-	data_arr[2] = lower_bits | flags | BACKLIGHT | PIN_EN;
-	data_arr[3] = lower_bits | flags | BACKLIGHT;
-	if(HAL_I2C_Master_Transmit(&i2c, lcd1604_addr, data_arr, sizeof(data_arr), HAL_MAX_DELAY) != HAL_OK) {
-        return HAL_ERROR;
-  } else {
-        return HAL_OK;
-  }
+    uint8_t up = data & 0xF0;
+    uint8_t lo = (data << 4) & 0xF0;
+    uint8_t data_arr[4];
+
+    // Старший полубайт
+    data_arr[0] = up | flags | BACKLIGHT | PIN_EN; // Данные + EN=1
+    data_arr[1] = up | flags | BACKLIGHT;          // Данные + EN=0 (спад - запись!)
+    
+    // Младший полубайт
+    data_arr[2] = lo | flags | BACKLIGHT | PIN_EN; // Данные + EN=1
+    data_arr[3] = lo | flags | BACKLIGHT;          // Данные + EN=0 (спад - запись!)
+
+    return HAL_I2C_Master_Transmit(&i2c, lcd1604_addr, data_arr, 4, 100);
 }
 
 void lcd1602_transmit_data(uint8_t data) {
